@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Multi-Provider Management — Nokos.ID Admin</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/admin/index.html" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>Admin Panel</small></div>
+    </a>
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/admin/index.html">Dashboard</a>
+      <a href="/admin/verifikasi.html">Verifikasi Deposit</a>
+      <a href="/admin/providers.html">Multi-Provider</a>
+      <a href="/admin/audit.html">Audit Log</a>
+      <a href="/admin/2fa-setup.html">2FA</a>
+      <a href="#" onclick="logout();return false;">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container">
+    <h1 style="font-size:24px;margin-bottom:4px">Multi-Provider Management</h1>
+    <p class="muted" style="margin-bottom:20px">Kelola provider OTP (RuangOTP, KirimKode, dst). Test koneksi wajib sebelum aktivasi.</p>
+
+    <!-- Statistik -->
+    <div class="grid grid-4" id="stats" style="margin-bottom:20px"><div class="state"><div class="spinner"></div></div></div>
+
+    <!-- Daftar provider -->
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+        <h2 style="font-size:18px">Daftar Provider</h2>
+        <button class="btn btn-primary btn-sm" id="addBtn">+ Tambah Provider</button>
+      </div>
+      <div id="provList"><div class="state"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- Stats per-provider -->
+    <div class="card">
+      <h2 style="font-size:18px;margin-bottom:12px">Monitoring per Provider</h2>
+      <div id="monitorList"><div class="state"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Modal tambah/edit provider -->
+<div class="modal-backdrop" id="provModal">
+  <div class="modal" style="max-width:560px">
+    <h3 id="modalTitle">Tambah Provider</h3>
+    <form id="provForm">
+      <input type="hidden" id="provId" />
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Provider Code</label>
+          <input type="text" id="pcode" placeholder="ruangotp / kirimkode" pattern="[a-z0-9_]{3,30}" required />
+          <div class="hint">Lowercase, alfanumerik + underscore</div>
+        </div>
+        <div class="field">
+          <label>Provider Name</label>
+          <input type="text" id="pname" placeholder="RuangOTP" required />
+        </div>
+        <div class="field">
+          <label>Base URL</label>
+          <input type="url" id="purl" placeholder="https://ruangotp.io/api" required />
+        </div>
+        <div class="field">
+          <label>Auth Method</label>
+          <select id="pauth">
+            <option value="bearer">Bearer token (header Authorization)</option>
+            <option value="header">Header kustom</option>
+            <option value="query">Query param (?api_key=)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>API Key Secret Name</label>
+          <input type="text" id="psecret" placeholder="RUANGOTP_API_KEY" pattern="[A-Z][A-Z0-9_]{2,63}" required />
+          <div class="hint">Nama Cloudflare Secret (BUKAN nilai API key). Set via: wrangler pages secret put &lt;NAMA&gt;</div>
+        </div>
+        <div class="field">
+          <label>Display Name (User-facing)</label>
+          <input type="text" id="pdisplay" placeholder="Nokos.ID Server / Server 1" />
+          <div class="hint">Nama yang tampil ke USER. Jangan isi nama provider asli. Kosongkan untuk auto ("Nokos.ID Server" / "Server N").</div>
+        </div>
+        <div class="field">
+          <label>Priority</label>
+          <input type="number" id="ppriority" value="100" min="1" max="999" />
+          <div class="hint">1 = tertinggi</div>
+        </div>
+        <div class="field">
+          <label>Markup %</label>
+          <input type="number" id="pmarkup" value="15" min="0" max="500" />
+        </div>
+        <div class="field">
+          <label>Timeout (ms)</label>
+          <input type="number" id="ptimeout" value="10000" min="1000" max="60000" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Path Map (JSON)</label>
+        <textarea id="pconfig" rows="5" placeholder='{"paths":{"countries":"/country-v2/list","getNumber":"/order-v2/get-number",...}}'></textarea>
+        <div class="hint">Path endpoint per action. Lihat PROVIDER_VERIFY.md. Bila tidak yakin, biarkan default adapter.</div>
+      </div>
+    </form>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Batal</button>
+      <button class="btn btn-primary" id="saveBtn">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer"><div class="container"><strong>Nokos.ID</strong> Admin Panel — Multi-Provider</div></footer>
+
+<script src="/app.js"></script>
+<script>
+  let isSuperAdmin = false;
+
+  async function load() {
+    const me = await requireAdmin();
+    if (!me) return;
+    isSuperAdmin = me.user.role === "super_admin";
+    if (!isSuperAdmin) {
+      document.getElementById("addBtn").style.display = "none";
+    }
+    await loadStats();
+    await loadList();
+    await loadMonitor();
+  }
+
+  async function loadStats() {
+    try {
+      const res = await API.admin.providerStats();
+      const s = res.stats.totals;
+      document.getElementById("stats").innerHTML = `
+        <div class="card"><div class="card-title">Total Provider</div><div class="card-value">${s.total}</div></div>
+        <div class="card"><div class="card-title">Aktif</div><div class="card-value" style="color:var(--success)">${s.active}</div></div>
+        <div class="card"><div class="card-title">Nonaktif</div><div class="card-value">${s.inactive}</div></div>
+        <div class="card"><div class="card-title">Gangguan</div><div class="card-value" style="color:var(--danger)">${s.degraded}</div></div>
+      `;
+    } catch (e) { document.getElementById("stats").innerHTML = `<div class="state">Gagal: ${escapeHtml(e.message)}</div>`; }
+  }
+
+  async function loadList() {
+    try {
+      const res = await API.admin.providers();
+      const list = res.providers || [];
+      if (list.length === 0) {
+        document.getElementById("provList").innerHTML = '<div class="state"><div class="icon">📡</div>Belum ada provider</div>';
+        return;
+      }
+      document.getElementById("provList").innerHTML = '<div class="table-wrap"><table><thead><tr><th>Code</th><th>Nama Asli</th><th>Tampil ke User</th><th>Base URL</th><th>Status</th><th>Priority</th><th>Default</th><th>Test</th><th>Saldo</th><th>Aksi</th></tr></thead><tbody>' +
+        list.map(p => `<tr>
+          <td class="mono">${escapeHtml(p.provider_code)}</td>
+          <td>${escapeHtml(p.provider_name)}</td>
+          <td style="color:var(--accent)">${escapeHtml(p.display_name || "-")}</td>
+          <td style="font-size:12px;word-break:break-all">${escapeHtml(p.base_url)}</td>
+          <td>${statusBadge(p.status)}</td>
+          <td>${p.priority}</td>
+          <td>${p.is_default ? "✓" : "-"}</td>
+          <td>${p.last_test_ok === 1 ? '<span class="badge badge-approved">OK</span>' : p.last_test_ok === 0 ? '<span class="badge badge-rejected">Gagal</span>' : '<span class="muted">-</span>'}</td>
+          <td>${p.last_balance_cents ? fmtIDR(p.last_balance_cents) : '-'}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="testConn(${p.id})">Test</button>
+            <button class="btn btn-outline btn-sm" onclick="bal(${p.id})">Saldo</button>
+            ${isSuperAdmin ? `<button class="btn btn-outline btn-sm" onclick="editProv(${p.id})">Edit</button>` : ""}
+            ${isSuperAdmin && p.status !== "active" ? `<button class="btn btn-success btn-sm" onclick="setStat(${p.id},'active')">Aktifkan</button>` : ""}
+            ${isSuperAdmin && p.status === "active" ? `<button class="btn btn-outline btn-sm" onclick="setStat(${p.id},'disabled')">Nonaktif</button>` : ""}
+            ${isSuperAdmin ? `<button class="btn btn-danger btn-sm" onclick="delProv(${p.id})">Hapus</button>` : ""}
+          </td>
+        </tr>`).join("") + "</tbody></table></div>";
+    } catch (e) { document.getElementById("provList").innerHTML = `<div class="state">Gagal: ${escapeHtml(e.message)}</div>`; }
+  }
+
+  async function loadMonitor() {
+    try {
+      const res = await API.admin.providerStats();
+      const list = res.stats.per_provider || [];
+      if (list.length === 0) {
+        document.getElementById("monitorList").innerHTML = '<div class="state">Belum ada data monitoring</div>';
+        return;
+      }
+      document.getElementById("monitorList").innerHTML = '<div class="table-wrap"><table><thead><tr><th>Provider</th><th>Total Order</th><th>Selesai</th><th>Gagal</th><th>Pending</th><th>Success Rate</th><th>Avg Response</th></tr></thead><tbody>' +
+        list.map(p => {
+          const total = (p.total_orders || 0);
+          const completed = (p.completed_orders || 0);
+          const rate = total > 0 ? ((completed / total) * 100).toFixed(1) + "%" : "-";
+          const avg = p.avg_response_ms ? Math.round(p.avg_response_ms) + "ms" : "-";
+          return `<tr>
+            <td>${escapeHtml(p.provider_name)} <span class="mono" style="font-size:11px">(${escapeHtml(p.provider_code)})</span></td>
+            <td>${total}</td>
+            <td style="color:var(--success)">${completed}</td>
+            <td style="color:var(--danger)">${p.failed_orders || 0}</td>
+            <td>${p.pending_orders || 0}</td>
+            <td>${rate}</td>
+            <td>${avg}</td>
+          </tr>`;
+        }).join("") + "</tbody></table></div>";
+    } catch (e) { document.getElementById("monitorList").innerHTML = `<div class="state">Gagal: ${escapeHtml(e.message)}</div>`; }
+  }
+
+  document.getElementById("addBtn").addEventListener("click", () => {
+    document.getElementById("modalTitle").textContent = "Tambah Provider";
+    document.getElementById("provForm").reset();
+    document.getElementById("provId").value = "";
+    document.getElementById("provModal").classList.add("open");
+  });
+
+  async function editProv(id) {
+    try {
+      const res = await API.admin.getProvider(id);
+      const p = res.provider;
+      document.getElementById("modalTitle").textContent = "Edit " + p.provider_name;
+      document.getElementById("provId").value = p.id;
+      document.getElementById("pcode").value = p.provider_code;
+      document.getElementById("pcode").disabled = true;
+      document.getElementById("pname").value = p.provider_name;
+      document.getElementById("purl").value = p.base_url;
+      document.getElementById("pauth").value = p.auth_method;
+      document.getElementById("psecret").value = p.api_key_secret_name;
+      document.getElementById("pdisplay").value = p.display_name || "";
+      document.getElementById("ppriority").value = p.priority;
+      document.getElementById("pmarkup").value = p.markup_percent;
+      document.getElementById("ptimeout").value = p.timeout_ms;
+      document.getElementById("pconfig").value = p.configuration ? JSON.stringify(p.configuration, null, 2) : "";
+      document.getElementById("provModal").classList.add("open");
+    } catch (e) { toast(e.message, "error"); }
+  }
+
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+    const id = document.getElementById("provId").value;
+    let config;
+    try { config = document.getElementById("pconfig").value ? JSON.parse(document.getElementById("pconfig").value) : {}; }
+    catch { toast("Path Map JSON tidak valid", "error"); return; }
+    const payload = {
+      provider_code: document.getElementById("pcode").value.trim(),
+      provider_name: document.getElementById("pname").value.trim(),
+      base_url: document.getElementById("purl").value.trim(),
+      auth_method: document.getElementById("pauth").value,
+      api_key_secret_name: document.getElementById("psecret").value.trim(),
+      display_name: document.getElementById("pdisplay").value.trim() || null,
+      priority: Number(document.getElementById("ppriority").value),
+      markup_percent: Number(document.getElementById("pmarkup").value),
+      timeout_ms: Number(document.getElementById("ptimeout").value),
+      configuration: config,
+    };
+    try {
+      if (id) {
+        await API.admin.updateProvider(id, payload);
+        toast("Provider diperbarui", "success");
+      } else {
+        await API.admin.createProvider(payload);
+        toast("Provider dibuat (status inactive). Test koneksi dulu sebelum aktivasi.", "success", 5000);
+      }
+      closeModal();
+      await loadList();
+      await loadStats();
+    } catch (e) { toast(e.message, "error"); }
+  });
+
+  function closeModal() {
+    document.getElementById("provModal").classList.remove("open");
+    document.getElementById("pcode").disabled = false;
+  }
+
+  async function testConn(id) {
+    toast("Menguji koneksi...", "info");
+    try {
+      const res = await API.admin.testProvider(id);
+      const r = res.result;
+      if (r.ok) {
+        toast("Koneksi OK. Provider siap diaktifkan.", "success");
+      } else {
+        toast("Test gagal: " + (r.error || "unknown"), "error", 5000);
+      }
+      await loadList();
+    } catch (e) { toast(e.message, "error"); }
+  }
+
+  async function bal(id) {
+    try {
+      const res = await API.admin.providerBalance(id);
+      if (res.supported === false) {
+        toast("Provider tidak mendukung getBalance", "info");
+      } else {
+        toast("Saldo provider: " + fmtIDR(res.balance_cents), "success");
+      }
+      await loadList();
+    } catch (e) { toast(e.message, "error"); }
+  }
+
+  async function setStat(id, status) {
+    const verb = status === "active" ? "mengaktifkan" : "menonaktifkan";
+    if (!confirm(`Yakin ${verb} provider ini?`)) return;
+    try {
+      await API.admin.updateProvider(id, { status });
+      toast(`Provider ${status}`, "success");
+      await loadList();
+      await loadStats();
+    } catch (e) { toast(e.message, "error"); }
+  }
+
+  async function delProv(id) {
+    if (!confirm("Hapus provider? Provider harus dinonaktifkan (disabled) dulu dan tidak boleh punya order terkait.")) return;
+    try {
+      await API.admin.deleteProvider(id);
+      toast("Provider dihapus", "success");
+      await loadList();
+      await loadStats();
+    } catch (e) { toast(e.message, "error"); }
+  }
+
+  load();
+</script>
+</body>
+</html>

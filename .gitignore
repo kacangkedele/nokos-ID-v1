@@ -1,0 +1,16 @@
+node_modules/
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
+dist/
+coverage/
+*.log
+.DS_Store
+.vscode/
+.idea/
+# Jangan pernah commit secret / API key / data pengguna
+secrets.txt
+*.pem
+*.key

@@ -1,0 +1,32 @@
+{
+  "name": "nokos-id",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Nokos.ID V2 - Platform OTP & Wallet Ledger by Angga Official",
+  "main": "functions/api/index.js",
+  "scripts": {
+    "dev": "wrangler pages dev public --compatibility-date=2024-11-01",
+    "deploy": "wrangler pages deploy public --project-name=nokos-id",
+    "db:create": "wrangler d1 create nokos-db",
+    "db:migrate": "wrangler d1 execute nokos-db --file=migrations/0001_init.sql && wrangler d1 execute nokos-db --file=migrations/0002_indexes.sql && wrangler d1 execute nokos-db --file=migrations/0003_multi_provider.sql && wrangler d1 execute nokos-db --file=migrations/0004_hidden_provider.sql",
+    "db:migrate:local": "wrangler d1 execute nokos-db --local --file=migrations/0001_init.sql && wrangler d1 execute nokos-db --local --file=migrations/0002_indexes.sql && wrangler d1 execute nokos-db --local --file=migrations/0003_multi_provider.sql && wrangler d1 execute nokos-db --local --file=migrations/0004_hidden_provider.sql",
+    "db:studio": "wrangler d1 execute nokos-db --command \"SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;\"",
+    "kv:create": "wrangler kv namespace create RATE_LIMIT && wrangler kv namespace create SESSIONS",
+    "r2:create": "wrangler r2 bucket create nokos-bukti",
+    "secret:provider": "wrangler pages secret put RUANGOTP_API_KEY",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.5.0"
+  },
+  "devDependencies": {
+    "better-sqlite3": "^11.3.0",
+    "vitest": "^2.1.0",
+    "wrangler": "^3.85.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

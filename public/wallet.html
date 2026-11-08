@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Wallet — Nokos.ID</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/dashboard.html" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>by Angga Official</small></div>
+    </a>
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/katalog.html">Beli Nomor</a>
+      <a href="/deposit.html">Deposit</a>
+      <a href="/wallet.html">Wallet</a>
+      <a href="#" onclick="logout();return false;">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container">
+    <h1 style="font-size:24px;margin-bottom:20px">Wallet &amp; Riwayat Transaksi</h1>
+    <div class="grid grid-4" id="summary" style="margin-bottom:24px"></div>
+    <div class="card">
+      <h2 style="font-size:18px;margin-bottom:12px">Riwayat Transaksi</h2>
+      <div id="txList"><div class="state"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="container"><strong>Nokos.ID</strong> by Angga Official</div></footer>
+
+<script src="/app.js"></script>
+<script>
+  async function load() {
+    const me = await requireAuth();
+    if (!me) return;
+    const w = me.wallet;
+    document.getElementById("summary").innerHTML = `
+      <div class="card"><div class="card-title">Saldo Tersedia</div><div class="card-value">${fmtIDR(w.balance)}</div></div>
+      <div class="card"><div class="card-title">Total Deposit</div><div class="card-value">${fmtIDR(w.total_deposit)}</div></div>
+      <div class="card"><div class="card-title">Total Pembelian</div><div class="card-value">${fmtIDR(w.total_order)}</div></div>
+      <div class="card"><div class="card-title">Total Refund</div><div class="card-value">${fmtIDR(w.total_refund)}</div></div>
+    `;
+    try {
+      const res = await API.walletTransactions(50);
+      const list = res.transactions || [];
+      if (list.length === 0) {
+        document.getElementById("txList").innerHTML = '<div class="state"><div class="icon">📭</div>Belum ada transaksi</div>';
+        return;
+      }
+      document.getElementById("txList").innerHTML = '<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Nominal</th><th>Saldo Setelah</th><th>Status</th><th>Ref</th></tr></thead><tbody>' +
+        list.map(t => `<tr>
+          <td>${fmtDate(t.created_at)}</td>
+          <td>${escapeHtml(t.transaction_type)}</td>
+          <td style="color:${t.amount >= 0 ? "var(--success)" : "var(--danger)"}">${t.amount >= 0 ? "+" : ""}${fmtIDR(t.amount)}</td>
+          <td>${fmtIDR(t.balance_after)}</td>
+          <td>${statusBadge(t.status)}</td>
+          <td class="mono" style="font-size:11px">${escapeHtml(t.reference_id?.slice(0,12) || "-")}</td>
+        </tr>`).join("") + "</tbody></table></div>";
+    } catch (e) {
+      document.getElementById("txList").innerHTML = `<div class="state">Gagal memuat: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+  load();
+</script>
+</body>
+</html>

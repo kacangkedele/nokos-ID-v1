@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Audit Log — Nokos.ID Admin</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/admin/index.html" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>Admin Panel</small></div>
+    </a>
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/admin/index.html">Dashboard</a>
+      <a href="/admin/verifikasi.html">Verifikasi Deposit</a>
+      <a href="/admin/providers.html">Multi-Provider</a>
+      <a href="/admin/audit.html">Audit Log</a>
+      <a href="/admin/2fa-setup.html">2FA</a>
+      <a href="#" onclick="logout();return false;">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container">
+    <h1 style="font-size:24px;margin-bottom:20px">Audit Log</h1>
+    <div class="card" style="margin-bottom:16px">
+      <label style="display:inline-flex;gap:8px;align-items:center">
+        <span>Filter aksi:</span>
+        <select id="actionFilter">
+          <option value="">Semua</option>
+          <option value="deposit_approve">Approve Deposit</option>
+          <option value="deposit_reject">Reject Deposit</option>
+          <option value="login">Login</option>
+          <option value="otp_order_placed">Pembelian OTP</option>
+          <option value="otp_refund">Refund OTP</option>
+          <option value="provider_call">Provider Call</option>
+        </select>
+      </label>
+    </div>
+    <div class="card">
+      <div id="logList"><div class="state"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="container"><strong>Nokos.ID</strong> Admin Panel</div></footer>
+
+<script src="/app.js"></script>
+<script>
+  async function load() {
+    const me = await requireAdmin();
+    if (!me) return;
+    if (!["super_admin", "admin_ops"].includes(me.user.role)) {
+      document.getElementById("logList").innerHTML = '<div class="state"><div class="icon">🔒</div>Hanya super_admin & admin_ops yang bisa melihat audit log.</div>';
+      return;
+    }
+    await loadList();
+  }
+  async function loadList() {
+    const action = document.getElementById("actionFilter").value;
+    try {
+      const res = await API.admin.auditLog(action, 100, 0);
+      const list = res.logs || [];
+      if (list.length === 0) {
+        document.getElementById("logList").innerHTML = '<div class="state"><div class="icon">📭</div>Belum ada log</div>';
+        return;
+      }
+      document.getElementById("logList").innerHTML = '<div class="table-wrap"><table><thead><tr><th>Waktu</th><th>Aksi</th><th>User</th><th>Admin</th><th>Ref</th><th>Detail</th><th>IP</th></tr></thead><tbody>' +
+        list.map(l => `<tr>
+          <td>${fmtDate(l.created_at)}</td>
+          <td><span class="badge badge-pending">${escapeHtml(l.action)}</span></td>
+          <td>${escapeHtml(l.user_username || l.user_id || "-")}</td>
+          <td>${escapeHtml(l.admin_username || l.admin_id || "-")}</td>
+          <td class="mono" style="font-size:11px">${escapeHtml(l.reference_id?.slice(0,12) || "-")}</td>
+          <td style="font-size:11px;max-width:240px;word-break:break-all">${escapeHtml(l.details || "")}</td>
+          <td style="font-size:11px">${escapeHtml(l.ip || "-")}</td>
+        </tr>`).join("") + "</tbody></table></div>";
+    } catch (e) {
+      document.getElementById("logList").innerHTML = `<div class="state">Gagal: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+  document.getElementById("actionFilter").addEventListener("change", loadList);
+  load();
+</script>
+</body>
+</html>

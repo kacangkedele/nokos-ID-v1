@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Kebijakan Refund — Nokos.ID</title>
+<link rel="stylesheet" href="/styles.css" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+</head>
+<body>
+<nav class="navbar"><div class="container"><a href="/" class="brand"><img src="/assets/nokos-logo.png" alt="Nokos.ID" /><div>Nokos.ID<small>by Angga Official</small></div></a></div></nav>
+<section class="section">
+  <div class="container" style="max-width:760px">
+    <h1 style="font-size:26px;margin-bottom:8px">Kebijakan Refund</h1>
+    <p class="muted">Terakhir diperbarui: November 2026</p>
+    <div class="card" style="margin-top:20px">
+      <h2 style="font-size:18px;margin-bottom:8px">1. Deposit QRIS Manual</h2>
+      <p>Deposit yang belum diverifikasi (status pending) dapat dibatalkan oleh pengguna. Karena dana sudah dibayar ke merchant Angga Official, pengembalian dilakukan manual oleh admin setelah verifikasi. Hubungi <a href="mailto:refund@nokos.id">refund@nokos.id</a> dengan menyertakan kode deposit.</p>
+
+      <h2 style="font-size:18px;margin:16px 0 8px">2. Salah Verifikasi (Admin Error)</h2>
+      <p>Bila admin salah mengkredit nominal (lebih/kurang dari yang dibayar), koreksi dilakukan via ledger entry dengan ref_type='adjustment' atau 'refund'. Hubungi admin dalam 3 hari kerja dengan bukti transaksi.</p>
+
+      <h2 style="font-size:18px;margin:16px 0 8px">3. Pembelian Nomor Gagal</h2>
+      <p>Refund otomatis diberikan bila: (a) provider RuangOTP mengembalikan NO_NUMBERS (stok habis); (b) nomor kedaluwarsa sebelum SMS/OTP masuk; (c) provider gagal menerbitkan nomor (error 5xx). Refund dicatat sebagai ledger entry ref_type='refund' dengan reference_id = order.id. Saldo kembali ke pengguna secara atomik.</p>
+
+      <h2 style="font-size:18px;margin:16px 0 8px">4. Tidak Dapat Direfund</h2>
+      <p>Tidak ada refund bila: (a) nomor sudah aktif dan OTP sudah diterima; (b) pembatalan dilakukan setelah status completed; (c) pelanggaran ToS menyebabkan suspensi; (d) pengguna salah memilih layanan tetapi nomor sudah aktif.</p>
+
+      <h2 style="font-size:18px;margin:16px 0 8px">5. Klaim Refund</h2>
+      <p>Klaim refund diajukan dalam 3 hari kerja sejak transaksi. Refund diproses dalam 1x24 jam kerja. Bila terjadi double-refund karena bug sistem, kami berhak mengoreksi saldo sesuai ledger.</p>
+
+      <h2 style="font-size:18px;margin:16px 0 8px">6. Provider Timeout</h2>
+      <p>Bila pembelian timeout dengan status provider belum diketahui, kami TIDAK langsung refund atau buat order baru. Admin akan mengecek status ke provider via endpoint getStatus, lalu memutuskan refund atau melanjutkan. Hal ini mencegah pengguna mendapat 2 nomor sekaligus untuk satu pembayaran.</p>
+    </div>
+  </div>
+</section>
+<footer class="footer"><div class="container"><strong>Nokos.ID</strong> by Angga Official &copy; <span id="year"></span></div></footer>
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>

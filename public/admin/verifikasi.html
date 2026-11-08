@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Admin Verifikasi Deposit — Nokos.ID</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/admin/index.html" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>Admin Panel</small></div>
+    </a>
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/admin/index.html">Dashboard</a>
+      <a href="/admin/verifikasi.html">Verifikasi Deposit</a>
+      <a href="/admin/providers.html">Multi-Provider</a>
+      <a href="/admin/audit.html">Audit Log</a>
+      <a href="/admin/2fa-setup.html">2FA</a>
+      <a href="#" onclick="logout();return false;">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container">
+    <h1 style="font-size:24px;margin-bottom:4px">Antrian Verifikasi Deposit</h1>
+    <p class="muted" style="margin-bottom:20px">Periksa bukti pembayaran, setujui atau tolak. Approve akan menambah saldo pengguna satu kali via ledger.</p>
+
+    <div class="card" style="margin-bottom:16px">
+      <label style="display:inline-flex;gap:8px;align-items:center">
+        <span>Filter status:</span>
+        <select id="statusFilter">
+          <option value="pending">Pending (antrian)</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="card">
+      <div id="depList"><div class="state"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Modal preview bukti -->
+<div class="modal-backdrop" id="proofModal">
+  <div class="modal">
+    <h3>Bukti Pembayaran</h3>
+    <img id="proofImg" style="width:100%;border-radius:8px" alt="bukti" />
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal reject reason -->
+<div class="modal-backdrop" id="rejectModal">
+  <div class="modal">
+    <h3>Tolak Deposit</h3>
+    <p class="muted" style="margin-bottom:12px">Alasan wajib diisi. Akan dikirim ke pengguna via notifikasi.</p>
+    <div class="field">
+      <textarea id="rejectReason" rows="3" placeholder="contoh: Bukti pembayaran tidak jelas / nominal tidak cocok"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeReject()">Batal</button>
+      <button class="btn btn-danger" id="confirmRejectBtn">Tolak Deposit</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer"><div class="container"><strong>Nokos.ID</strong> Admin Panel</div></footer>
+
+<script src="/app.js"></script>
+<script>
+  let currentDep = null;
+  let rejectId = null;
+
+  async function load() {
+    const me = await requireAdmin();
+    if (!me) return;
+    if (["super_admin", "admin_deposit"].includes(me.user.role)) {
+      await loadList();
+    } else {
+      document.getElementById("depList").innerHTML = '<div class="state"><div class="icon">🔒</div>Anda tidak punya hak verifikasi deposit. Hanya super_admin & admin_deposit.</div>';
+    }
+  }
+
+  async function loadList() {
+    const status = document.getElementById("statusFilter").value;
+    try {
+      const res = await API.admin.deposits(status);
+      const list = res.deposits || [];
+      if (list.length === 0) {
+        document.getElementById("depList").innerHTML = `<div class="state"><div class="icon">✅</div>Tidak ada deposit ${status}</div>`;
+        return;
+      }
+      const canVerify = ["super_admin", "admin_deposit"].includes((await API.me()).user.role);
+      document.getElementById("depList").innerHTML = '<div class="table-wrap"><table><thead><tr><th>User</th><th>Kode</th><th>Nominal</th><th>Bukti</th><th>Status</th><th>Tgl</th><th>Aksi</th></tr></thead><tbody>' +
+        list.map(d => `<tr>
+          <td>${escapeHtml(d.username || "-")}<br><span style="font-size:11px;color:var(--text-muted)">${escapeHtml(d.email || "")}</span></td>
+          <td class="mono">${escapeHtml(d.deposit_code)}</td>
+          <td><strong>${fmtIDR(d.amount)}</strong></td>
+          <td>${d.payment_proof_key ? `<button class="btn btn-outline btn-sm" onclick="showProof('${d.id}')">Lihat</button>` : '<span class="muted">belum</span>'}</td>
+          <td>${statusBadge(d.status)}</td>
+          <td>${fmtDate(d.created_at)}</td>
+          <td>${d.status === "pending" && canVerify ? `
+            <button class="btn btn-success btn-sm" onclick="approveDep('${d.id}','${escapeHtml(d.username)}',${d.amount})">Approve</button>
+            <button class="btn btn-danger btn-sm" onclick="openReject('${d.id}')">Reject</button>
+          ` : '<span class="muted">-</span>'}</td>
+        </tr>`).join("") + "</tbody></table></div>";
+    } catch (e) {
+      document.getElementById("depList").innerHTML = `<div class="state">Gagal: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+
+  async function showProof(id) {
+    currentDep = id;
+    try {
+      const url = API.admin.proofUrl(id);
+      const blob = await fetch(url, { credentials: "same-origin" }).then(r => {
+        if (!r.ok) throw new Error("Gagal load bukti");
+        return r.blob();
+      });
+      document.getElementById("proofImg").src = URL.createObjectURL(blob);
+      document.getElementById("proofModal").classList.add("open");
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  }
+  function closeModal() { document.getElementById("proofModal").classList.remove("open"); }
+
+  async function approveDep(id, username, amount) {
+    if (!confirm(`Setujui deposit ${fmtIDR(amount)} untuk user ${username}?\nSaldo akan ditambah SATU KALI via ledger.`)) return;
+    try {
+      await API.admin.approve(id);
+      toast("Deposit disetujui. Saldo dikredit.", "success");
+      await loadList();
+    } catch (e) { toast(e.message, "error"); }
+  }
+
+  function openReject(id) { rejectId = id; document.getElementById("rejectModal").classList.add("open"); }
+  function closeReject() { document.getElementById("rejectModal").classList.remove("open"); rejectId = null; }
+
+  document.getElementById("confirmRejectBtn").addEventListener("click", async () => {
+    const reason = document.getElementById("rejectReason").value.trim();
+    if (!reason) { toast("Alasan wajib diisi", "error"); return; }
+    try {
+      await API.admin.reject(rejectId, reason);
+      toast("Deposit ditolak. Notifikasi dikirim ke user.", "info");
+      closeReject();
+      document.getElementById("rejectReason").value = "";
+      await loadList();
+    } catch (e) { toast(e.message, "error"); }
+  });
+
+  document.getElementById("statusFilter").addEventListener("change", loadList);
+  load();
+</script>
+</body>
+</html>

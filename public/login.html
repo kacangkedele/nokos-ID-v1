@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Login — Nokos.ID</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>by Angga Official</small></div>
+    </a>
+    <div class="nav-links">
+      <a href="/daftar.html">Daftar</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container" style="max-width:420px">
+    <div class="card">
+      <h1 style="font-size:24px;margin-bottom:8px">Masuk</h1>
+      <p class="muted" style="margin-bottom:20px">Selamat datang kembali di Nokos.ID</p>
+      <form id="loginForm">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required autocomplete="email" placeholder="anda@email.com" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••••" />
+        </div>
+        <div id="err" class="err" style="margin-bottom:12px"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Masuk</button>
+      </form>
+      <div id="twoFaStep" class="hidden" style="margin-top:20px">
+        <h2 style="font-size:18px;margin-bottom:8px">Verifikasi 2FA</h2>
+        <p class="muted" style="margin-bottom:12px">Masukkan kode dari aplikasi authenticator Anda.</p>
+        <div class="field">
+          <label for="code">Kode 2FA (6 digit)</label>
+          <input type="text" id="code" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder="123456" />
+        </div>
+        <div class="field">
+          <label for="recovery">atau Recovery Code</label>
+          <input type="text" id="recovery" placeholder="XXXX-XXXX-XXXX-XXXX" />
+        </div>
+        <button type="button" class="btn btn-accent btn-block" id="verifyBtn">Verifikasi</button>
+      </div>
+      <p class="center muted" style="margin-top:16px"><a href="/lupa-sandi.html">Lupa password?</a> · <a href="/daftar.html">Buat akun</a></p>
+    </div>
+  </div>
+</section>
+
+<script src="/app.js"></script>
+<script>
+  const form = document.getElementById("loginForm");
+  const err = document.getElementById("err");
+  const submitBtn = document.getElementById("submitBtn");
+  let challenge = null;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    err.textContent = "";
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Memproses...";
+    try {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const res = await API.login({ email, password });
+      if (res.require_2fa && res.challenge) {
+        challenge = res.challenge;
+        document.getElementById("twoFaStep").classList.remove("hidden");
+        document.getElementById("code").focus();
+        toast("Masukkan kode 2FA untuk melanjutkan", "info");
+      } else {
+        toast("Login berhasil", "success");
+        setTimeout(() => (window.location.href = "/dashboard.html"), 600);
+      }
+    } catch (e) {
+      err.textContent = e.message;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Masuk";
+    }
+  });
+
+  document.getElementById("verifyBtn").addEventListener("click", async () => {
+    const code = document.getElementById("code").value.trim();
+    const recovery = document.getElementById("recovery").value.trim();
+    if (!code && !recovery) { toast("Isi kode 2FA atau recovery code", "error"); return; }
+    try {
+      const res = await API.twoFA.verify({ challenge, code, recovery_code: recovery });
+      toast("Login berhasil", "success");
+      setTimeout(() => (window.location.href = "/dashboard.html"), 600);
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  });
+</script>
+</body>
+</html>

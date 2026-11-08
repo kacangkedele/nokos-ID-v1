@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<meta name="description" content="Nokos.ID - Platform nomor virtual & OTP terpercaya by Angga Official. Deposit QRIS, wallet aman, OTP instan." />
+<title>Nokos.ID — Nomor Virtual & OTP Terpercaya | Angga Official</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+<link rel="apple-touch-icon" href="/assets/nokos-logo.png" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>by Angga Official</small></div>
+    </a>
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/login.html">Login</a>
+      <a href="/daftar.html" class="btn-primary">Daftar</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <h1>Nomor Virtual &amp; OTP untuk Pengujian Aman</h1>
+    <p>Nokos.ID adalah platform nomor virtual dan OTP yang sah untuk QA, developer, dan verifikasi yang diizinkan. Wallet ledger terenkripsi, deposit QRIS Manual, dan kepatuhan UU PDP Indonesia.</p>
+    <div class="hero-cta">
+      <a href="/daftar.html" class="btn btn-accent">Mulai Gratis</a>
+      <a href="/login.html" class="btn btn-outline">Sudah punya akun</a>
+    </div>
+  </div>
+</header>
+
+<section class="section">
+  <div class="container">
+    <h2 class="center">Mengapa Nokos.ID?</h2>
+    <p class="muted center">Dibangun dengan standar keamanan finansial: ledger immutable, 2FA wajib admin, audit log penuh.</p>
+    <div class="grid grid-3" style="margin-top:24px">
+      <div class="card">
+        <div class="card-title">Wallet Ledger</div>
+        <div class="card-value small">Immutable</div>
+        <p class="muted" style="margin-top:8px">Setiap perubahan saldo dicatat sebagai transaksi append-only dengan balance_before dan balance_after. Tidak ada saldo minus, tidak ada double-spend.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Deposit QRIS</div>
+        <div class="card-value small">Manual Verify</div>
+        <p class="muted" style="margin-top:8px">Bayar via QRIS merchant Angga Official, upload bukti, admin verifikasi. Bukti disimpan di R2 privat dengan retensi 90 hari.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Admin 2FA</div>
+        <div class="card-value small">Wajib Aktif</div>
+        <p class="muted" style="margin-top:8px">Setiap admin wajib TOTP + recovery codes. Tidak ada verifikasi deposit tanpa 2FA. RBAC berlapis dengan 4 role.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2 class="center">Alur Kerja</h2>
+    <div class="grid grid-3" style="margin-top:24px">
+      <div class="card"><div class="card-title">1. Daftar &amp; Top-up</div><p class="muted">Buat akun, pilih nominal, scan QRIS Angga Official, upload bukti. Admin verifikasi dalam &lt;30 menit.</p></div>
+      <div class="card"><div class="card-title">2. Pilih Layanan</div><p class="muted">Pilih negara dan aplikasi. Sistem mengambil harga real-time dari provider dan menampilkan harga jual final.</p></div>
+      <div class="card"><div class="card-title">3. Terima OTP</div><p class="muted">Saldo dipotong atomik, nomor diberikan, polling OTP otomatis. Refund otomatis bila provider gagal.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="card" style="border-left:4px solid var(--warn)">
+      <h2 style="color:var(--warn)">⚠ Batasan Penggunaan</h2>
+      <p style="margin-top:8px">Nokos.ID hanya untuk pengujian pada sistem milik sendiri atau yang diizinkan pemiliknya. Dilarang: pengambilalihan akun pihak lain, bypass 2FA tanpa izin, akun bank/dompet digital/kartu kredit, penipuan, spam massal. Pelanggaran menyebabkan suspensi permanen. Lihat <a href="/syarat-layanan.html">Syarat Layanan</a> dan <a href="/kebijakan-privasi.html">Kebijakan Privasi</a>.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div>
+      <strong>Nokos.ID</strong> by Angga Official &copy; <span id="year"></span>
+    </div>
+    <div class="footer-links">
+      <a href="/kebijakan-privasi.html">Privasi</a>
+      <a href="/syarat-layanan.html">Syarat</a>
+      <a href="/kebijakan-refund.html">Refund</a>
+      <a href="/kontak.html">Kontak</a>
+    </div>
+  </div>
+</footer>
+<script src="/app.js"></script>
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }
+</script>
+</body>
+</html>

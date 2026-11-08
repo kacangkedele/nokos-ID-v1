@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Kebijakan Privasi — Nokos.ID</title>
+<link rel="stylesheet" href="/styles.css" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/" class="brand"><img src="/assets/nokos-logo.png" alt="Nokos.ID" /><div>Nokos.ID<small>by Angga Official</small></div></a>
+  </div>
+</nav>
+<section class="section">
+  <div class="container" style="max-width:760px">
+    <h1 style="font-size:26px;margin-bottom:8px">Kebijakan Privasi</h1>
+    <p class="muted">Terakhir diperbarui: November 2026</p>
+    <div class="card" style="margin-top:20px">
+      <h2 style="font-size:18px;margin-bottom:8px">1. Data yang Kami Kumpulkan</h2>
+      <p>Nokos.ID (dikelola oleh Angga Official) mengumpulkan data berikut saat Anda mendaftar dan menggunakan layanan: alamat email, username, hash password (tidak plaintext), nomor IP, user-agent browser, riwayat transaksi wallet, riwayat deposit, dan bukti pembayaran QRIS yang Anda unggah (gambar). Bukti pembayaran disimpan di Cloudflare R2 dengan nama acak dan akses privat.</p>
+
+      <h2 style="font-size:18px;margin:16px 0 8px">2. Tujuan Penggunaan</h2>
+      <p>Data digunakan untuk: autentikasi dan otorisasi akun, pemrosesan transaksi deposit dan pembelian nomor, verifikasi pembayaran oleh admin, pencegahan penipuan dan double-spending, kepatuhan terhadap regulasi, serta pemeliharaan keamanan sistem. Kami tidak menjual data Anda kepada pihak ketiga.</p>
+
+      <h2 style="font-size:18px;margin:16px 0 8px">3. Dasar Hukum</h2>
+      <p>Pemrosesan data pribadi Anda didasarkan pada persetujuan (saat mendaftar), kewajiban kontraktual (untuk memberikan layanan), dan kepentingan sah (keamanan, pencegahan penipuan), sesuai <strong>UU Pelindungan Data Pribadi No. 27 Tahun 2022</strong> dan UU ITE No. 11/2008 jo. UU No. 19/2016.</p>
+
+      <h2 style="font-size:18px;margin:16px 0 8px">4. Retensi Data</h2>
+      <p>Bukti pembayaran disimpan maksimal 90 hari setelah deposit diverifikasi atau ditolak, lalu dihapus dari R2. Riwayat transaksi wallet disimpan selama akun aktif, dan dapat dihapus permanen 30 hari setelah permintaan penghapusan akun. Log audit admin disimpan 2 tahun untuk kepatuhan.</p>
+
+      <h2 style="font-size:18px;margin:16px 0 8px">5. Hak Subjek Data</h2>
+      <p>Anda berhak: mengakses data pribadi Anda, meminta koreksi, meminta penghapusan, menarik persetujuan, dan mengajukan keberatan atas pemrosesan. Permintaan diajukan ke kontak di bawah dan diproses dalam 14 hari kerja.</p>
+
+      <h2 style="font-size:18px;margin:16px 0 8px">6. Keamanan Data</h2>
+      <p>Password di-hash dengan PBKDF2-SHA256 (210.000 iterasi). Sesi disimpan dengan cookie HttpOnly, Secure, SameSite. API Key provider dan kunci enkripsi disimpan di Cloudflare Secrets, tidak pernah diekspos ke frontend. Bukti pembayaran diakses via signed URL R2 berlaku 1 jam, tidak pernah public-read.</p>
+
+      <h2 style="font-size:18px;margin:16px 0 8px">7. Kontak DPO</h2>
+      <p>Untuk pertanyaan terkait privasi atau permintaan hak subjek data, hubungi: <a href="mailto:privacy@nokos.id">privacy@nokos.id</a></p>
+    </div>
+  </div>
+</section>
+<footer class="footer"><div class="container"><strong>Nokos.ID</strong> by Angga Official &copy; <span id="year"></span></div></footer>
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>

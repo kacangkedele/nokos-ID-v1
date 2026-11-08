@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Daftar — Nokos.ID</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>by Angga Official</small></div>
+    </a>
+    <div class="nav-links">
+      <a href="/login.html">Login</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container" style="max-width:460px">
+    <div class="card">
+      <h1 style="font-size:24px;margin-bottom:8px">Buat Akun</h1>
+      <p class="muted" style="margin-bottom:20px">Gratis. Hanya butuh email dan password.</p>
+      <form id="regForm">
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required minlength="3" maxlength="30" pattern="[a-zA-Z0-9_.\-]+" placeholder="angga_official" />
+          <div class="hint">3-30 karakter alfanumerik, titik, strip, underscore.</div>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required autocomplete="email" placeholder="anda@email.com" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required minlength="10" autocomplete="new-password" placeholder="Min. 10 karakter" />
+          <div class="hint">Gunakan kombinasi huruf, angka, simbol. Min 10 karakter.</div>
+        </div>
+        <div class="field">
+          <label for="password2">Ulangi Password</label>
+          <input type="password" id="password2" name="password2" required minlength="10" autocomplete="new-password" placeholder="Ulangi password" />
+        </div>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:16px;font-size:13px;color:var(--text-muted)">
+          <input type="checkbox" id="agree" required style="margin-top:3px" />
+          <span>Saya menyetujui <a href="/syarat-layanan.html">Syarat Layanan</a> dan <a href="/kebijakan-privasi.html">Kebijakan Privasi</a>, serta memahami batasan penggunaan OTP yang sah.</span>
+        </label>
+        <div id="err" class="err" style="margin-bottom:12px"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Daftar</button>
+      </form>
+      <p class="center muted" style="margin-top:16px">Sudah punya akun? <a href="/login.html">Masuk</a></p>
+    </div>
+  </div>
+</section>
+
+<script src="/app.js"></script>
+<script>
+  const form = document.getElementById("regForm");
+  const err = document.getElementById("err");
+  const btn = document.getElementById("submitBtn");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    err.textContent = "";
+    const username = document.getElementById("username").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const password2 = document.getElementById("password2").value;
+    if (password !== password2) { err.textContent = "Password tidak cocok."; return; }
+    if (!document.getElementById("agree").checked) { err.textContent = "Anda harus menyetujui syarat & kebijakan."; return; }
+    btn.disabled = true;
+    btn.textContent = "Memproses...";
+    try {
+      await API.register({ username, email, password });
+      toast("Pendaftaran berhasil! Mengalihkan...", "success");
+      setTimeout(() => (window.location.href = "/dashboard.html"), 800);
+    } catch (e) {
+      err.textContent = e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Daftar";
+    }
+  });
+</script>
+</body>
+</html>

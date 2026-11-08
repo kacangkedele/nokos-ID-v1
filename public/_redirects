@@ -1,0 +1,6 @@
+# Cloudflare Pages _redirects
+# SPA fallback untuk halaman dinamis
+/login.html        /login.html        200
+/dashboard.html    /dashboard.html    200
+# 404 default
+/*  /index.html  200

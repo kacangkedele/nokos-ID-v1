@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Deposit QRIS — Nokos.ID</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/dashboard.html" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>by Angga Official</small></div>
+    </a>
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/katalog.html">Beli Nomor</a>
+      <a href="/deposit.html">Deposit</a>
+      <a href="/wallet.html">Wallet</a>
+      <a href="#" onclick="logout();return false;">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container" style="max-width:560px">
+    <h1 style="font-size:24px;margin-bottom:4px">Deposit via QRIS Manual</h1>
+    <p class="muted" style="margin-bottom:20px">Bayar ke QRIS merchant <strong>Angga Official</strong>, lalu upload bukti. Admin verifikasi &lt;30 menit.</p>
+
+    <!-- Step 1: pilih nominal -->
+    <div class="card" id="step1">
+      <h2 style="font-size:18px;margin-bottom:12px">1. Pilih Nominal</h2>
+      <div class="grid grid-3" id="presetGrid" style="margin-bottom:16px"></div>
+      <div class="field">
+        <label for="customAmount">Atau nominal custom (Rp)</label>
+        <input type="number" id="customAmount" min="10000" step="1000" placeholder="contoh: 75000" />
+        <div class="hint">Min Rp10.000, Max Rp5.000.000</div>
+      </div>
+      <button class="btn btn-primary btn-block" id="createBtn">Lanjut ke Pembayaran</button>
+    </div>
+
+    <!-- Step 2: QRIS + upload bukti -->
+    <div class="card qris-card hidden" id="step2">
+      <h2 style="font-size:18px;margin-bottom:4px">2. Scan &amp; Bayar</h2>
+      <p class="muted" style="margin-bottom:8px">Transfer tepat sebesar:</p>
+      <div class="qris-amount" id="qrisAmount">Rp0</div>
+      <div class="qris-img">
+        <img src="/assets/qris-angga-official.png" alt="QRIS Angga Official" />
+      </div>
+      <p class="muted" style="font-size:13px;margin-bottom:12px">Scan QRIS di atas dengan e-wallet apa saja yang mendukung QRIS (DANA, OVO, GoPay, ShopeePay, Banking). Pastikan nama merchant <strong>Angga Official</strong> muncul.</p>
+      <ol class="qris-steps">
+        <li>Buka aplikasi pembayaran, scan QR di atas</li>
+        <li>Pastikan nominal sama persis</li>
+        <li>Selesaikan pembayaran</li>
+        <li>Screenshot / foto bukti pembayaran</li>
+        <li>Upload bukti di bawah ini</li>
+      </ol>
+      <div class="card" style="background:rgba(255,176,32,0.08);border:1px solid var(--warn);margin:12px 0">
+        <p style="font-size:13px;color:var(--warn)"><strong>Kode Deposit:</strong> <span class="mono" id="depositCode">-</span><br>Gunakan kode ini sebagai referensi bila diminta admin.</p>
+      </div>
+      <div class="field">
+        <label for="proofFile">Upload Bukti Pembayaran</label>
+        <input type="file" id="proofFile" accept="image/jpeg,image/png,image/webp" />
+        <div class="hint">Format JPG/PNG/WebP, maks 5 MB.</div>
+      </div>
+      <div id="previewWrap" class="hidden" style="margin:12px 0">
+        <img id="previewImg" style="max-width:200px;border-radius:8px" alt="preview" />
+      </div>
+      <button class="btn btn-accent btn-block" id="uploadBtn" disabled>Upload Bukti</button>
+      <button class="btn btn-outline btn-block" id="cancelBtn" style="margin-top:8px">Batalkan Deposit</button>
+    </div>
+
+    <!-- Step 3: sukses -->
+    <div class="card hidden center" id="step3">
+      <div style="font-size:48px">✓</div>
+      <h2 style="font-size:20px;margin:8px 0">Bukti Terkirim!</h2>
+      <p class="muted">Deposit Anda menunggu verifikasi admin. Biasanya &lt;30 menit.</p>
+      <p class="muted" style="margin-top:8px">Kode Deposit: <span class="mono" id="finalCode">-</span></p>
+      <a href="/dashboard.html" class="btn btn-primary" style="margin-top:16px">Kembali ke Dashboard</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div><strong>Nokos.ID</strong> by Angga Official</div>
+    <div class="footer-links"><a href="/kebijakan-refund.html">Kebijakan Refund</a></div>
+  </div>
+</footer>
+
+<script src="/app.js"></script>
+<script>
+  const presets = [10000, 25000, 50000, 100000, 200000, 500000];
+  let selectedAmount = null;
+  let currentDeposit = null;
+
+  // render preset
+  const grid = document.getElementById("presetGrid");
+  presets.forEach((amt) => {
+    const btn = el("button", { class: "btn btn-outline", "data-amt": amt, onclick: () => selectPreset(amt) },
+      fmtIDR(amt));
+    grid.appendChild(btn);
+  });
+  function selectPreset(amt) {
+    selectedAmount = amt;
+    document.querySelectorAll("[data-amt]").forEach((b) => {
+      b.className = Number(b.dataset.amt) === amt ? "btn btn-accent" : "btn btn-outline";
+    });
+    document.getElementById("customAmount").value = "";
+  }
+  document.getElementById("customAmount").addEventListener("input", (e) => {
+    selectedAmount = Number(e.target.value) * 100;
+    document.querySelectorAll("[data-amt]").forEach((b) => (b.className = "btn btn-outline"));
+  });
+
+  document.getElementById("createBtn").addEventListener("click", async () => {
+    const amount = selectedAmount;
+    if (!amount || amount < 10000) { toast("Pilih nominal minimal Rp10.000", "error"); return; }
+    try {
+      const res = await API.deposits.create(amount);
+      currentDeposit = res.deposit;
+      document.getElementById("qrisAmount").textContent = fmtIDR(currentDeposit.amount);
+      document.getElementById("depositCode").textContent = currentDeposit.deposit_code;
+      document.getElementById("step1").classList.add("hidden");
+      document.getElementById("step2").classList.remove("hidden");
+      toast("Deposit dibuat. Lanjutkan pembayaran.", "success");
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  });
+
+  // preview file
+  const fileInput = document.getElementById("proofFile");
+  const uploadBtn = document.getElementById("uploadBtn");
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files[0];
+    if (file) {
+      uploadBtn.disabled = false;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById("previewImg").src = e.target.result;
+        document.getElementById("previewWrap").classList.remove("hidden");
+      };
+      reader.readAsDataURL(file);
+    } else {
+      uploadBtn.disabled = true;
+      document.getElementById("previewWrap").classList.add("hidden");
+    }
+  });
+
+  document.getElementById("uploadBtn").addEventListener("click", async () => {
+    const file = fileInput.files[0];
+    if (!file) { toast("Pilih file bukti dulu", "error"); return; }
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = "Mengupload...";
+    try {
+      await API.deposits.uploadProof(currentDeposit.id, file);
+      document.getElementById("step2").classList.add("hidden");
+      document.getElementById("finalCode").textContent = currentDeposit.deposit_code;
+      document.getElementById("step3").classList.remove("hidden");
+      toast("Bukti terkirim!", "success");
+    } catch (e) {
+      toast(e.message, "error");
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = "Upload Bukti";
+    }
+  });
+
+  document.getElementById("cancelBtn").addEventListener("click", async () => {
+    if (!confirm("Batalkan deposit ini?")) return;
+    try {
+      await API.deposits.cancel(currentDeposit.id);
+      toast("Deposit dibatalkan", "info");
+      setTimeout(() => window.location.reload(), 800);
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  });
+
+  requireAuth();
+</script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Detail Pesanan — Nokos.ID</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/dashboard.html" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>by Angga Official</small></div>
+    </a>
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/katalog.html">Beli Nomor</a>
+      <a href="/deposit.html">Deposit</a>
+      <a href="#" onclick="logout();return false;">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container" style="max-width:720px">
+    <h1 style="font-size:24px;margin-bottom:20px">Detail Pesanan OTP</h1>
+    <div id="detail"><div class="state"><div class="spinner"></div></div></div>
+    <div class="card hidden" id="otpCard">
+      <div class="card-title">Kode OTP Diterima</div>
+      <div class="card-value" id="otpText" style="font-family:monospace;font-size:22px;word-break:break-all;color:var(--success)">-</div>
+      <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="copyOTP()">Salin OTP</button>
+    </div>
+    <div class="grid grid-2" style="margin-top:16px">
+      <button class="btn btn-accent" id="refreshBtn">Cek OTP (Refresh)</button>
+      <button class="btn btn-danger" id="cancelBtn">Batalkan Order</button>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="container"><strong>Nokos.ID</strong> by Angga Official</div></footer>
+
+<script src="/app.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const orderId = params.get("id");
+  let pollTimer = null;
+
+  async function load() {
+    const me = await requireAuth();
+    if (!me) return;
+    if (!orderId) { document.getElementById("detail").innerHTML = '<div class="state">ID pesanan tidak valid</div>'; return; }
+    await refresh();
+    // auto-poll tiap 5 detik bila status masih active
+    pollTimer = setInterval(async () => {
+      try {
+        const res = await API.otp.pollStatus(orderId);
+        if (res.result?.status === "completed" && res.result?.sms_text) {
+          clearInterval(pollTimer);
+          showOTP(res.result.sms_text);
+          refresh();
+        }
+      } catch {}
+    }, 5000);
+  }
+
+  async function refresh() {
+    try {
+      const res = await API.otp.getOrder(orderId);
+      const o = res.order;
+      document.getElementById("detail").innerHTML = `
+        <div class="card">
+          <div class="grid grid-2">
+            <div><div class="card-title">Order ID</div><div class="mono" style="font-size:13px">${escapeHtml(o.id)}</div></div>
+            <div><div class="card-title">Status</div><div>${statusBadge(o.status)}</div></div>
+            <div><div class="card-title">Nomor</div><div class="mono" style="font-size:18px">${escapeHtml(o.phone_number || "menunggu provider...")}</div></div>
+            <div><div class="card-title">Biaya</div><div>${fmtIDR(o.cost_cents)}</div></div>
+            <div><div class="card-title">Dibuat</div><div>${fmtDate(o.created_at)}</div></div>
+            <div><div class="card-title">Kedaluwarsa</div><div>${fmtDate(o.expires_at)}</div></div>
+          </div>
+        </div>`;
+      if (o.sms_text) showOTP(o.sms_text);
+      if (o.status === "completed" || o.status === "expired" || o.status === "cancelled") {
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        document.getElementById("refreshBtn").disabled = true;
+      }
+    } catch (e) {
+      document.getElementById("detail").innerHTML = `<div class="state">Gagal: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+
+  function showOTP(text) {
+    document.getElementById("otpCard").classList.remove("hidden");
+    document.getElementById("otpText").textContent = text;
+  }
+
+  function copyOTP() {
+    const text = document.getElementById("otpText").textContent;
+    navigator.clipboard.writeText(text).then(() => toast("OTP disalin", "success"));
+  }
+
+  document.getElementById("refreshBtn").addEventListener("click", async () => {
+    try {
+      const res = await API.otp.pollStatus(orderId);
+      await refresh();
+      if (res.result?.status === "completed" && res.result?.sms_text) {
+        showOTP(res.result.sms_text);
+        toast("OTP diterima!", "success");
+      } else {
+        toast("Belum ada OTP. Tunggu sebentar.", "info");
+      }
+    } catch (e) { toast(e.message, "error"); }
+  });
+
+  document.getElementById("cancelBtn").addEventListener("click", async () => {
+    if (!confirm("Batalkan order? Saldo akan direfund bila provider mengizinkan.")) return;
+    try {
+      await API.otp.cancel(orderId);
+      toast("Order dibatalkan. Saldo direfund bila berlaku.", "success");
+      await refresh();
+    } catch (e) { toast(e.message, "error"); }
+  });
+
+  load();
+</script>
+</body>
+</html>

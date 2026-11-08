@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Katalog Nomor — Nokos.ID</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/dashboard.html" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>by Angga Official</small></div>
+    </a>
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/katalog.html">Beli Nomor</a>
+      <a href="/deposit.html">Deposit</a>
+      <a href="/wallet.html">Wallet</a>
+      <a href="#" onclick="logout();return false;">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container">
+    <h1 style="font-size:24px;margin-bottom:4px">Katalog Nomor</h1>
+    <p class="muted" style="margin-bottom:20px">Pilih provider, negara &amp; layanan, lalu beli nomor virtual.</p>
+
+    <div class="card" style="margin-bottom:20px">
+      <!-- Mode routing -->
+      <div class="field">
+        <label>Mode Pemilihan Provider</label>
+        <select id="mode">
+          <option value="priority">Otomatis (Priority) — pakai provider default</option>
+          <option value="cheapest">Otomatis (Termurah) — pilih harga jual terendah</option>
+          <option value="availability">Otomatis (Ketersediaan) — pilih yang punya stok</option>
+          <option value="manual">Manual — pilih provider sendiri</option>
+        </select>
+        <div class="hint" id="modeHint">Mode otomatis akan memilih provider terbaik berdasarkan kriteria.</div>
+      </div>
+
+      <!-- Provider (tampil bila mode=manual) -->
+      <div class="field hidden" id="providerField">
+        <label>Provider</label>
+        <select id="provider"><option value="">Memuat...</option></select>
+        <div class="hint">Daftar provider aktif. Test koneksi via admin panel.</div>
+      </div>
+
+      <div class="grid grid-3">
+        <div class="field">
+          <label for="country">Negara</label>
+          <select id="country"><option value="">Memuat...</option></select>
+        </div>
+        <div class="field">
+          <label for="service">Layanan/Aplikasi</label>
+          <select id="service" disabled><option value="">Pilih negara dulu</option></select>
+        </div>
+        <div class="field">
+          <label for="operator">Operator (opsional)</label>
+          <select id="operator" disabled><option value="">Semua</option></select>
+        </div>
+      </div>
+      <div id="priceInfo" class="card hidden" style="background:rgba(54,217,255,0.06);margin-top:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div>
+            <div class="card-title" id="providerLabel">Provider</div>
+            <div class="card-value" id="finalPrice">-</div>
+            <div class="hint" id="priceDetail" style="margin-top:4px"></div>
+          </div>
+          <button class="btn btn-accent" id="buyBtn">Beli Nomor</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:18px;margin-bottom:12px">Pesanan Aktif &amp; Riwayat</h2>
+      <div id="ordersList"><div class="state"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="container"><strong>Nokos.ID</strong> by Angga Official</div></footer>
+
+<script src="/app.js"></script>
+<script>
+  let currentProvider = null;     // ID provider yang dipilih (internal, bukan code)
+  let resolvedProvider = null;    // hasil routing {provider_id, server_name, selling_price_cents}
+
+  async function load() {
+    const me = await requireAuth();
+    if (!me) return;
+    loadOrders();
+    await loadProviders();
+    await loadCountries();
+  }
+
+  async function loadProviders() {
+    try {
+      const res = await API.otp.providers();
+      const sel = document.getElementById("provider");
+      const list = res.providers || [];
+      sel.innerHTML = '<option value="">Pilih provider</option>';
+      if (list.length === 0) {
+        sel.innerHTML = '<option value="">Tidak ada provider aktif</option>';
+        toast("Belum ada provider aktif. Hubungi admin.", "error", 5000);
+        return;
+      }
+      list.forEach((p) => {
+        // Hidden Provider System: tampilkan display_name generik (Nokos.ID Server / Server N).
+        // Tidak ada provider_code, provider_name, atau markup_percent di UI.
+        sel.appendChild(el("option", { value: p.id }, p.display_name));
+      });
+    } catch (e) {
+      document.getElementById("provider").innerHTML = `<option value="">Gagal: ${escapeHtml(e.message)}</option>`;
+    }
+  }
+
+  document.getElementById("mode").addEventListener("change", () => {
+    const mode = document.getElementById("mode").value;
+    document.getElementById("providerField").classList.toggle("hidden", mode !== "manual");
+    const hints = {
+      priority: "Mode otomatis: pilih provider dengan priority tertinggi (is_default dulu).",
+      cheapest: "Mode otomatis: bandingkan harga jual semua provider, ambil termurah.",
+      availability: "Mode otomatis: pilih provider dengan nomor tersedia.",
+      manual: "Pilih provider sendiri. Harga diambil dari provider yang dipilih.",
+    };
+    document.getElementById("modeHint").textContent = hints[mode];
+    refreshPrice();
+  });
+
+  document.getElementById("provider").addEventListener("change", async () => {
+    currentProvider = document.getElementById("provider").value;
+    if (currentProvider) {
+      await loadCountries(currentProvider);
+    }
+    refreshPrice();
+  });
+
+  async function loadCountries(providerCode) {
+    const sel = document.getElementById("country");
+    sel.innerHTML = '<option value="">Memuat...</option>';
+    try {
+      const res = await API.otp.countries(providerCode);
+      const countries = Array.isArray(res.countries) ? res.countries : [];
+      sel.innerHTML = '<option value="">Pilih negara</option>';
+      countries.forEach((c) => {
+        const id = c.id || c.code || c.country_id;
+        const name = c.name || c.country || c.ru || JSON.stringify(c).slice(0, 40);
+        sel.appendChild(el("option", { value: id }, name));
+      });
+    } catch (e) {
+      sel.innerHTML = `<option value="">Gagal: ${escapeHtml(e.message)}</option>`;
+      toast("Gagal memuat negara. Pastikan provider aktif & terkonfigurasi.", "error");
+    }
+  }
+
+  document.getElementById("country").addEventListener("change", async () => {
+    const c = document.getElementById("country").value;
+    const sSel = document.getElementById("service");
+    if (!c) { sSel.innerHTML = '<option value="">Pilih negara dulu</option>'; sSel.disabled = true; return; }
+    sSel.disabled = true;
+    sSel.innerHTML = '<option value="">Memuat...</option>';
+    try {
+      const res = await API.otp.services(c, currentProvider);
+      const services = Array.isArray(res.services) ? res.services : [];
+      if (services.length === 0) { sSel.innerHTML = '<option value="">Tidak ada layanan</option>'; return; }
+      sSel.innerHTML = '<option value="">Pilih layanan</option>';
+      services.forEach((s) => {
+        const id = s.code || s.service || s.id;
+        const name = s.name || s.service_name || s.ru || JSON.stringify(s).slice(0, 40);
+        sSel.appendChild(el("option", { value: id }, name));
+      });
+      sSel.disabled = false;
+    } catch (e) {
+      sSel.innerHTML = `<option value="">Gagal: ${escapeHtml(e.message)}</option>`;
+    }
+    refreshPrice();
+  });
+
+  document.getElementById("service").addEventListener("change", refreshPrice);
+
+  async function refreshPrice() {
+    const country = document.getElementById("country").value;
+    const service = document.getElementById("service").value;
+    const mode = document.getElementById("mode").value;
+    if (!country || !service) {
+      document.getElementById("priceInfo").classList.add("hidden");
+      return;
+    }
+    try {
+      const res = await API.otp.route(country, service, mode, mode === "manual" ? currentProvider : null);
+      resolvedProvider = res;
+      document.getElementById("finalPrice").textContent = fmtIDR(res.selling_price_cents);
+      // Hidden Provider System: tampilkan server_name (Nokos.ID Server / Server N),
+      // BUKAN provider_code / provider_config.name / markup_percent.
+      document.getElementById("providerLabel").textContent = "Server: " + (res.server_name || "Nokos.ID Server");
+      document.getElementById("priceDetail").textContent = `Harga final (mode: ${mode})`;
+      document.getElementById("priceInfo").classList.remove("hidden");
+    } catch (e) {
+      document.getElementById("finalPrice").textContent = "Tidak tersedia";
+      document.getElementById("priceDetail").textContent = e.message;
+      document.getElementById("priceInfo").classList.remove("hidden");
+      resolvedProvider = null;
+    }
+  }
+
+  document.getElementById("buyBtn").addEventListener("click", async () => {
+    const country = document.getElementById("country").value;
+    const service = document.getElementById("service").value;
+    const operator = document.getElementById("operator").value;
+    if (!country || !service) { toast("Pilih negara & layanan", "error"); return; }
+    if (!resolvedProvider) { toast("Harga belum ter-resolve. Tunggu sebentar.", "error"); return; }
+    if (!confirm(`Konfirmasi pembelian?\nServer: ${resolvedProvider.server_name || "Nokos.ID Server"}\nSaldo akan dipotong ${fmtIDR(resolvedProvider.selling_price_cents)}.`)) return;
+    try {
+      const res = await API.otp.createOrder({
+        country_id: country,
+        service_id: service,
+        operator_id: operator,
+        provider_id: resolvedProvider.provider_id,
+        routing_mode: document.getElementById("mode").value,
+      });
+      const orderId = res.order.id;
+      toast("Pesanan dibuat. Mengeksekusi...", "info");
+      const exec = await API.otp.confirmOrder(orderId);
+      if (exec.result?.status === "active" && exec.result?.phone_number) {
+        toast(`Nomor: ${exec.result.phone_number}`, "success", 5000);
+        window.location.href = `/order.html?id=${orderId}`;
+      } else if (exec.result?.status === "failed") {
+        toast(`Pembelian gagal: ${exec.result.failure_reason}. Saldo direfund.`, "error", 5000);
+      } else {
+        toast(`Status: ${exec.result?.status}. Lihat detail.`, "info");
+        window.location.href = `/order.html?id=${orderId}`;
+      }
+      loadOrders();
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  });
+
+  async function loadOrders() {
+    try {
+      const res = await API.otp.listOrders();
+      const list = res.orders || [];
+      if (list.length === 0) {
+        document.getElementById("ordersList").innerHTML = '<div class="state"><div class="icon">📱</div>Belum ada pesanan</div>';
+        return;
+      }
+      document.getElementById("ordersList").innerHTML = '<div class="table-wrap"><table><thead><tr><th>Server</th><th>Nomor</th><th>Biaya</th><th>Status</th><th>OTP</th><th>Tanggal</th><th></th></tr></thead><tbody>' +
+        list.map(o => `<tr>
+          <td>${escapeHtml(o.server_name || "Nokos.ID Server")}</td>
+          <td class="mono">${escapeHtml(o.phone_number || "menunggu...")}</td>
+          <td>${fmtIDR(o.cost_cents)}</td>
+          <td>${statusBadge(o.status)}</td>
+          <td class="mono" style="font-size:11px;max-width:160px;word-break:break-all">${escapeHtml(o.sms_text?.slice(0,60) || "-")}</td>
+          <td>${fmtDate(o.created_at)}</td>
+          <td><a href="/order.html?id=${o.id}" class="btn btn-outline btn-sm">Detail</a></td>
+        </tr>`).join("") + "</tbody></table></div>";
+    } catch (e) {
+      document.getElementById("ordersList").innerHTML = `<div class="state">Gagal: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+  load();
+</script>
+</body>
+</html>

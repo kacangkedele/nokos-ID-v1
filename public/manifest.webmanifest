@@ -1,0 +1,17 @@
+{
+  "name": "Nokos.ID - Angga Official",
+  "short_name": "Nokos.ID",
+  "description": "Platform nomor virtual & OTP terpercaya - Angga Official",
+  "start_url": "/dashboard.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#071b40",
+  "theme_color": "#071b40",
+  "lang": "id",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    { "src": "/assets/nokos-logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/assets/nokos-logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Dashboard — Nokos.ID</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/dashboard.html" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>by Angga Official</small></div>
+    </a>
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/katalog.html">Beli Nomor</a>
+      <a href="/deposit.html">Deposit</a>
+      <a href="/wallet.html">Wallet</a>
+      <a href="/riwayat.html">Riwayat</a>
+      <a href="#" onclick="logout();return false;">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container">
+    <h1 style="font-size:24px;margin-bottom:4px">Halo, <span id="userName">...</span> 👋</h1>
+    <p class="muted" style="margin-bottom:20px">Selamat datang di dashboard Nokos.ID</p>
+
+    <div class="grid grid-4" id="walletCards">
+      <div class="card">
+        <div class="card-title">Saldo Tersedia</div>
+        <div class="card-value" id="balance">...</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Total Deposit</div>
+        <div class="card-value" id="totalDeposit">...</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Total Pembelian</div>
+        <div class="card-value" id="totalOrder">...</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Total Refund</div>
+        <div class="card-value" id="totalRefund">...</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap">
+      <a href="/deposit.html" class="btn btn-accent">Deposit Saldo</a>
+      <a href="/katalog.html" class="btn btn-primary">Beli Nomor</a>
+      <a href="/wallet.html" class="btn btn-outline">Riwayat Transaksi</a>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:24px">
+      <div class="card">
+        <h2 style="font-size:18px;margin-bottom:12px">Deposit Terakhir</h2>
+        <div id="recentDeposits"><div class="state"><div class="spinner"></div></div></div>
+        <a href="/deposit.html" class="btn btn-outline btn-sm" style="margin-top:12px">Lihat Semua →</a>
+      </div>
+      <div class="card">
+        <h2 style="font-size:18px;margin-bottom:12px">Pesanan OTP Terakhir</h2>
+        <div id="recentOrders"><div class="state"><div class="spinner"></div></div></div>
+        <a href="/katalog.html" class="btn btn-outline btn-sm" style="margin-top:12px">Beli Nomor Baru →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div><strong>Nokos.ID</strong> by Angga Official &copy; <span id="year"></span></div>
+    <div class="footer-links">
+      <a href="/kebijakan-privasi.html">Privasi</a>
+      <a href="/syarat-layanan.html">Syarat</a>
+      <a href="/kebijakan-refund.html">Refund</a>
+    </div>
+  </div>
+</footer>
+
+<script src="/app.js"></script>
+<script>
+  async function load() {
+    const me = await requireAuth();
+    if (!me) return;
+    document.getElementById("userName").textContent = me.user.username;
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    document.getElementById("balance").textContent = fmtIDR(me.wallet.balance);
+    document.getElementById("totalDeposit").textContent = fmtIDR(me.wallet.total_deposit);
+    document.getElementById("totalOrder").textContent = fmtIDR(me.wallet.total_order);
+    document.getElementById("totalRefund").textContent = fmtIDR(me.wallet.total_refund);
+
+    try {
+      const dep = await API.deposits.list();
+      const el1 = document.getElementById("recentDeposits");
+      if (!dep.deposits || dep.deposits.length === 0) {
+        el1.innerHTML = '<div class="state"><div class="icon">📭</div>Belum ada deposit</div>';
+      } else {
+        el1.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Kode</th><th>Nominal</th><th>Status</th><th>Tanggal</th></tr></thead><tbody>' +
+          dep.deposits.slice(0, 5).map(d => `<tr>
+            <td class="mono">${escapeHtml(d.deposit_code)}</td>
+            <td>${fmtIDR(d.amount)}</td>
+            <td>${statusBadge(d.status)}</td>
+            <td>${fmtDate(d.created_at)}</td>
+          </tr>`).join("") + "</tbody></table></div>";
+      }
+    } catch (e) { document.getElementById("recentDeposits").innerHTML = `<div class="state">Gagal memuat: ${escapeHtml(e.message)}</div>`; }
+
+    try {
+      const ord = await API.otp.listOrders();
+      const el2 = document.getElementById("recentOrders");
+      if (!ord.orders || ord.orders.length === 0) {
+        el2.innerHTML = '<div class="state"><div class="icon">📱</div>Belum ada pesanan</div>';
+      } else {
+        el2.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Nomor</th><th>Biaya</th><th>Status</th><th>Tanggal</th></tr></thead><tbody>' +
+          ord.orders.slice(0, 5).map(o => `<tr>
+            <td class="mono">${escapeHtml(o.phone_number || "-")}</td>
+            <td>${fmtIDR(o.cost_cents)}</td>
+            <td>${statusBadge(o.status)}</td>
+            <td>${fmtDate(o.created_at)}</td>
+          </tr>`).join("") + "</tbody></table></div>";
+      }
+    } catch (e) { document.getElementById("recentOrders").innerHTML = `<div class="state">Gagal memuat: ${escapeHtml(e.message)}</div>`; }
+  }
+  load();
+</script>
+</body>
+</html>

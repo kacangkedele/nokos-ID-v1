@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#071b40" />
+<title>Riwayat — Nokos.ID</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/assets/nokos-logo.png" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <div class="container">
+    <a href="/dashboard.html" class="brand">
+      <img src="/assets/nokos-logo.png" alt="Nokos.ID" />
+      <div>Nokos.ID<small>by Angga Official</small></div>
+    </a>
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/katalog.html">Beli Nomor</a>
+      <a href="/deposit.html">Deposit</a>
+      <a href="/wallet.html">Wallet</a>
+      <a href="#" onclick="logout();return false;">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<section class="section">
+  <div class="container">
+    <h1 style="font-size:24px;margin-bottom:20px">Riwayat Deposit</h1>
+    <div class="card">
+      <div id="depList"><div class="state"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="container"><strong>Nokos.ID</strong> by Angga Official</div></footer>
+
+<script src="/app.js"></script>
+<script>
+  async function load() {
+    const me = await requireAuth();
+    if (!me) return;
+    try {
+      const res = await API.deposits.list();
+      const list = res.deposits || [];
+      if (list.length === 0) {
+        document.getElementById("depList").innerHTML = '<div class="state"><div class="icon">📭</div>Belum ada deposit. <a href="/deposit.html">Deposit sekarang →</a></div>';
+        return;
+      }
+      document.getElementById("depList").innerHTML = '<div class="table-wrap"><table><thead><tr><th>Kode</th><th>Nominal</th><th>Metode</th><th>Bukti</th><th>Status</th><th>Alasan</th><th>Tanggal</th></tr></thead><tbody>' +
+        list.map(d => `<tr>
+          <td class="mono">${escapeHtml(d.deposit_code)}</td>
+          <td>${fmtIDR(d.amount)}</td>
+          <td>${escapeHtml(d.payment_method)}</td>
+          <td>${d.payment_proof_key ? "✓ ada" : "-"}</td>
+          <td>${statusBadge(d.status)}</td>
+          <td style="font-size:12px;color:var(--text-muted)">${escapeHtml(d.rejection_reason || "-")}</td>
+          <td>${fmtDate(d.created_at)}</td>
+        </tr>`).join("") + "</tbody></table></div>";
+    } catch (e) {
+      document.getElementById("depList").innerHTML = `<div class="state">Gagal: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+  load();
+</script>
+</body>
+</html>

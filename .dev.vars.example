@@ -1,0 +1,26 @@
+# Contoh environment variables untuk DEVELOPMENT LOKAL.
+# Salin file ini ke .dev.vars (sudah di .gitignore) dan isi nilai asli.
+# JANGAN commit .dev.vars ke repository!
+
+# Secret penandatanganan cookie session (>=32 byte acak)
+# Generate: openssl rand -hex 32
+JWT_SECRET=dev-jwt-secret-32bytes-long-xxxxxx
+
+# Kunci enkripsi TOTP secret admin (32 byte)
+# Generate: openssl rand -hex 32
+ENCRYPTION_KEY=dev-encryption-key-32bytes-long-xx
+
+# API Key dari dashboard RuangOTP
+RUANGOTP_API_KEY=your-ruangotp-api-key
+
+# Base URL RuangOTP
+RUANGOTP_BASE_URL=https://ruangotp.io/api
+
+# (Opsional) Shared secret untuk webhook SMS dari provider
+RUANGOTP_WEBHOOK_SECRET=dev-webhook-secret
+
+# Nama merchant QRIS (default dari system_settings)
+QRIS_MERCHANT_NAME=Angga Official
+
+# Provider aktif (1=aktif, 0=nonaktif)
+PROVIDER_ENABLED=1
