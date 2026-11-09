@@ -1,9 +1,30 @@
-name = "nokos-id-v1"
-compatibility_date = "2024-01-01"
+name = "nokos-id"
+compatibility_date = "2024-11-01"
 pages_build_output_dir = "public"
+
+# Database D1
+[[d1_databases]]
+binding = "DB"
+database_name = "nokos-db"
+database_id = "a1b2c3d4-e5f6-7890-abcd-ef0123456789"
+
+# KV untuk rate-limit
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "1234567890abcdef1234567890abcdef"
+
+# KV untuk session cache
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "abcdef1234567890abcdef1234567890"
+
+# R2 untuk bukti pembayaran QRIS
+[[r2_buckets]]
+binding = "BUKTI"
+bucket_name = "nokos-bukti"
 
 [vars]
 APP_NAME = "Nokos.ID"
 APP_BRAND = "Angga Official"
-APP_URL = "https://pages.dev"
+APP_URL = "https://nokos.id"
 ENVIRONMENT = "production"
