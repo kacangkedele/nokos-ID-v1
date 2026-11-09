@@ -1,37 +1,9 @@
-name = "nokos-id"
-compatibility_date = "2024-11-01"
+name = "nokos-id-v1"
+compatibility_date = "2024-01-01"
 pages_build_output_dir = "public"
-
-# Production: ganti dengan ID D1 Anda (jalankan: npm run db:create)
-[[d1_databases]]
-binding = "DB"
-database_name = "nokos-db"
-database_id = "PASTE_D1_DATABASE_ID_ANDA"
-
-# KV untuk rate-limit dan session cache
-[[kv_namespaces]]
-binding = "RATE_LIMIT"
-id = "PASTE_KV_RATE_LIMIT_ID_ANDA"
-
-[[kv_namespaces]]
-binding = "SESSIONS"
-id = "PASTE_KV_SESSIONS_ID_ANDA"
-
-# R2 untuk bukti pembayaran QRIS (bucket PRIVATE)
-[[r2_buckets]]
-binding = "BUKTI"
-bucket_name = "nokos-bukti"
-
-# Secrets (jalankan: wrangler pages secret put <NAMA>)
-# - JWT_SECRET            : secret penandatanganan cookie session (>=32 byte acak)
-# - ENCRYPTION_KEY        : kunci enkripsi TOTP secret admin (32 byte hex)
-# - RUANGOTP_API_KEY      : API key dari dashboard RuangOTP
-# - RUANGOTP_BASE_URL     : mis. https://ruangotp.io/api/v2
-# - RUANGOTP_WEBHOOK_SECRET : (opsional) shared secret webhook SMS
-# - QRIS_MERCHANT_NAME    : "Angga Official"
 
 [vars]
 APP_NAME = "Nokos.ID"
 APP_BRAND = "Angga Official"
-APP_URL = "https://nokos.id"
+APP_URL = "https://pages.dev"
 ENVIRONMENT = "production"
